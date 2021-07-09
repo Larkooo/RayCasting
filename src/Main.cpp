@@ -5,13 +5,13 @@
 
 #include "Game.h"
 
-const uint16_t WIDTH = 1000;
-const uint16_t HEIGHT = 1000;
+const uint16_t WIDTH = 1280;
+const uint16_t HEIGHT = 720;
 
 int main()
 {
 	sf::VideoMode mode(WIDTH, HEIGHT);
-	Game game(mode, "Raycaster");
+	Game game(mode, "RayCaster");
 
 	game.Init();
 

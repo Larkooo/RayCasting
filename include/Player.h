@@ -30,38 +30,6 @@ public:
 	void SetVelocity(sf::Vector2f velocity) { m_Velocity = velocity; }
 	void SetDirection(sf::Vector2f direction) { m_Direction = direction; }
 
-	void HandleEvents(sf::Event event)
-	{
-		switch (event.key.code)
-		{
-		case sf::Keyboard::W:
-			m_Velocity += m_Direction * 10.0f;
-			break;
-		case sf::Keyboard::S:
-			m_Velocity -= m_Direction * 10.0f;
-			break;
-		case sf::Keyboard::A:
-		{
-			float rAngle = atan2f(m_Direction.y, m_Direction.x);
-			rAngle -= 0.05f;
-			m_Direction = { cosf(rAngle), sinf(rAngle) };
-			break;
-		}
-		case sf::Keyboard::D:
-		{
-			float rAngle = atan2f(m_Direction.y, m_Direction.x);
-			rAngle += 0.05f;
-			m_Direction = { cosf(rAngle), sinf(rAngle) };
-			break;
-		}
-		}
-	}
-	void Update(float delta)
-	{
-		m_Velocity *= delta;
-		m_Position += m_Velocity;
-	}
-	void Render()
-	{
-	}
+	void HandleEvents(sf::Event event);
+	void Update(float delta);
 };
