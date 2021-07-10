@@ -6,18 +6,9 @@ void World::Init()
 {
 	srand((uint32_t) time(0));
 
-	bool yes = true;
 	for (size_t i = 0; i < m_Map.size(); i++)
 	{
-		if (yes)
-		{
-			m_Map[i] = Tile(Tile::Type((rand() % 10) == 0), "./res/textures/c++.jpg");
-			yes = false;
-		}
-		else
-		{
-			m_Map[i] = Tile(Tile::Type((rand() % 10) == 0));
-		}
+		m_Map[i] = Tile(Tile::Type((rand() % 10) == 0), Tile::TextureType(rand() % 7));
 	}
 
 	for (size_t i = 0; i < m_Map.size(); i++)
@@ -45,11 +36,7 @@ void World::Render()
 	std::vector<Ray> rays;
 	std::vector<sf::Vertex> vertices;
 
-	static sf::Texture texture;
-
-	static auto loadTexture = [&]() {texture.loadFromFile("./res/textures/c++.jpg"); return 0; }();
-
-	static sf::Vector2u textureSize = { 630, 630 };
+	static sf::Vector2u textureSize = { 64, 64 };
 
 	for (size_t i = 0; i < renderSize.x; i++)
 	{
@@ -75,12 +62,12 @@ void World::Render()
 		if (rays[i].GetDirection().x < 0)
 		{
 			step.x = -1;
-			rayLength.x = (rays[i].GetOrigin().x - (float) rayMapPosition.x) * stepSize.x;
+			rayLength.x = (rays[i].GetOrigin().x - rayMapPosition.x) * stepSize.x;
 		}
 		else
 		{
 			step.x = 1;
-			rayLength.x = ((float) (rayMapPosition.x + 1) - rays[i].GetOrigin().x) * stepSize.x;
+			rayLength.x = (rayMapPosition.x + 1.0f - rays[i].GetOrigin().x) * stepSize.x;
 		}
 
 		if (rays[i].GetDirection().y < 0)
@@ -91,7 +78,7 @@ void World::Render()
 		else
 		{
 			step.y = 1;
-			rayLength.y = ((float) (rayMapPosition.y + 1) - rays[i].GetOrigin().y) * stepSize.y;
+			rayLength.y = (rayMapPosition.y + 1.0f - rays[i].GetOrigin().y) * stepSize.y;
 		}
 
 		float rayDistance = 0.0f;
@@ -118,7 +105,7 @@ void World::Render()
 			// check if hit
 			if (m_Map[rayMapPosition.x + MAP_WIDTH * rayMapPosition.y].GetType() == Tile::Type::Wall)
 			{
-				//Tile& tile = m_Map[rayMapPosition.x + MAP_WIDTH * rayMapPosition.y];
+				Tile& tile = m_Map[rayMapPosition.x + MAP_WIDTH * rayMapPosition.y];
 
 				// raw distance
 				rays[i].mHit = rayDistance;
@@ -128,9 +115,11 @@ void World::Render()
 				rayDistance *= cosf(rAngle - atan2f(playerDirection.y, playerDirection.x));
 
 				//Calculate distance of perpendicular ray (Euclidean distance will give fisheye effect!)
-				double perpWallDist;
-				if (rayLength.y > rayLength.x) perpWallDist = (rayMapPosition.x - rays[i].GetOrigin().x + (1 - step.x) / 2) / rays[i].GetDirection().x;
-				else           perpWallDist = (rayMapPosition.y - rays[i].GetOrigin().y + (1 - step.y) / 2) / rays[i].GetDirection().y;
+				float perpWallDist;
+				if (rayLength.y > rayLength.x) 
+					perpWallDist = (rayMapPosition.x - rays[i].GetOrigin().x + (1 - step.x) / 2) / rays[i].GetDirection().x;
+				else
+					perpWallDist = (rayMapPosition.y - rays[i].GetOrigin().y + (1 - step.y) / 2) / rays[i].GetDirection().y;
 
 				sf::Color color;
 				if (rayDistance > 15.0f)
@@ -156,33 +145,25 @@ void World::Render()
 				else
 					color = sf::Color::White;
 
-				int lineHeight = renderSize.y / perpWallDist;
+				//int lineHeight = (int) renderSize.y / rayDistance;
 				
-				//std::cout << rayDistance << std::endl;
-
 				float ceiling = (renderSize.y / 2.0f) - (renderSize.y / rayDistance);
 				float floor = renderSize.y - ceiling;
 
-				/*int ceiling = -lineHeight / 2 + renderSize.y / 2;
-				if (ceiling < 0) ceiling = 0;
-				int floor = lineHeight / 2 + renderSize.y / 2;
-				if (ceiling >= renderSize.y) floor = renderSize.y - 1;*/
-
-				// check if tile is textured
-				//if (tile.GetTexture().getSize().x > 0)
-					
-				//sf::Texture tileTexture = tile.GetTexture();
+				//std::cout << floor << std::endl;
 
 				// wall x
 				float localX;
 				if (rayLength.y > rayLength.x)
-					localX = rays[i].GetOrigin().y + perpWallDist * rays[i].GetDirection().y;
+					localX = rays[i].GetOrigin().y + rayDistance * rays[i].GetDirection().y;
 				else
-					localX = rays[i].GetOrigin().x + perpWallDist * rays[i].GetDirection().x;
+					localX = rays[i].GetOrigin().x + rayDistance * rays[i].GetDirection().x;
 				localX -= floorf(localX);
 
 				// find the texture coordinate to display with our x wall
-				uint32_t texX = localX * textureSize.x;
+				// add our texture offset
+				uint32_t texX = (uint32_t) (localX * textureSize.x) + ((uint8_t)tile.GetTextureType() * textureSize.x);
+				//std::cout << texX << std::endl;
 				if (rayLength.y > rayLength.x && rays[i].GetDirection().x > 0)
 					texX = textureSize.x - texX - 1;
 				if (rayLength.x > rayLength.y && rays[i].GetDirection().y < 0)
@@ -191,21 +172,14 @@ void World::Render()
 				// ceiling - floor = line height
 				float texStep = 1.0f * textureSize.y / (floor - ceiling);
 				// Starting texture coordinate
-				double texPosStart = (ceiling - renderSize.y / 2 + (floor - ceiling) / 2) * texStep;
-				double texPosEnd = (floor - renderSize.y / 2 + (floor - ceiling) / 2) * texStep;
-
-				uint32_t texYStart = (int)(texPosStart) & (textureSize.y - 1);
-				uint32_t texYEnd = (int)(texPosEnd) & (textureSize.y - 1);
-
-				//std::cout << texX << std::endl;
+				float texPosStart = (ceiling - renderSize.y / 2 + (floor - ceiling) / 2) * texStep;
+				float texPosEnd = (floor - renderSize.y / 2 + (floor - ceiling) / 2) * texStep;
 
 				// if ray hits a vertical line and color isn't too low, reduce the color, to add more depth
 				if (rayLength.y > rayLength.x && color.r > 50)
 				{
 					color.r -= 30; color.g -= 30; color.b -= 30;
 				}
-
-				//std::cout << texX << std::endl;
 
 				vertices.push_back({ { (float)i, (float) ceiling }, color, { (float)texX, (float)texPosStart }});
 				vertices.push_back({ { (float)i, (float) floor }, color, { (float)texX, (float)texPosEnd } });
@@ -217,8 +191,10 @@ void World::Render()
 
 	// Draw walls vertices
 	//sf::Texture::bind(&texture);
+	sf::Texture texture;
+	texture.loadFromFile("./res/textures/wolftextures.png");
 	sf::RenderStates states(&texture);
-
+	
 	Game::sInstance->draw(vertices.data(), vertices.size(), sf::Lines, states);
 
 	// Mini map

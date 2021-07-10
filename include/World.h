@@ -10,8 +10,8 @@
 class World
 {
 public:
-	static const uint16_t MAP_WIDTH = 32;
-	static const uint16_t MAP_HEIGHT = 32;
+	static const uint16_t MAP_WIDTH = 16;
+	static const uint16_t MAP_HEIGHT = 16;
 
 private:
 	std::array<Tile, MAP_WIDTH * MAP_HEIGHT> m_Map;
