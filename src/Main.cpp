@@ -5,8 +5,8 @@
 
 #include "Game.h"
 
-const uint16_t WIDTH = 1280;
-const uint16_t HEIGHT = 720;
+const uint16_t WIDTH = 800;
+const uint16_t HEIGHT = 800;
 
 int main()
 {

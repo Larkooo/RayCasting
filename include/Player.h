@@ -7,7 +7,7 @@
 #include "Game.h"
 #include "Ray.h"
 
-const float PI = 3.14159f;
+#include "Utils.h"
 
 class Player
 {

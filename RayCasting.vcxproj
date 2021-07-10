@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -151,17 +151,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Tile.cpp" />
     <ClCompile Include="src\Player.cpp" />
     <ClCompile Include="src\World.cpp" />
     <ClCompile Include="src\Game.cpp" />
     <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Game.h" />
     <ClInclude Include="include\Player.h" />
     <ClInclude Include="include\Ray.h" />
+    <ClInclude Include="include\stb_image.h" />
     <ClInclude Include="include\Tile.h" />
+    <ClInclude Include="include\Utils.h" />
     <ClInclude Include="include\World.h" />
+    <ClInclude Include="include\Texture.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\textures\c++.jpg" />
+    <Image Include="res\textures\wolftextures.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -6,9 +6,18 @@ void World::Init()
 {
 	srand((uint32_t) time(0));
 
+	bool yes = true;
 	for (size_t i = 0; i < m_Map.size(); i++)
 	{
-		m_Map[i] = Tile(Tile::Type((rand() % 10) == 0));
+		if (yes)
+		{
+			m_Map[i] = Tile(Tile::Type((rand() % 10) == 0), "./res/textures/c++.jpg");
+			yes = false;
+		}
+		else
+		{
+			m_Map[i] = Tile(Tile::Type((rand() % 10) == 0));
+		}
 	}
 
 	for (size_t i = 0; i < m_Map.size(); i++)
@@ -35,6 +44,13 @@ void World::Render()
 	// Window width is the number of casted rays
 	std::vector<Ray> rays;
 	std::vector<sf::Vertex> vertices;
+
+	static sf::Texture texture;
+
+	static auto loadTexture = [&]() {texture.loadFromFile("./res/textures/c++.jpg"); return 0; }();
+
+	static sf::Vector2u textureSize = { 630, 630 };
+
 	for (size_t i = 0; i < renderSize.x; i++)
 	{
 		// First part of this calculation is to find the initial angle
@@ -47,69 +63,163 @@ void World::Render()
 		// in a vectorial form
 		rays.push_back({ m_Player.GetPosition(), { cosf(rAngle), sinf(rAngle) } });
 
+		// DDA
+		sf::Vector2f stepSize(sqrtf(1 + powf(rays[i].GetDirection().y / rays[i].GetDirection().x, 2)), sqrtf(1 + powf(rays[i].GetDirection().x / rays[i].GetDirection().y, 2)));
+		sf::Vector2i rayMapPosition = (sf::Vector2i) rays[i].GetOrigin();
 
+		// x = length in columns
+		// y = length in rows
+		sf::Vector2f rayLength;
 
-		// This is really bad, really need to implement DDA
-		// x < depth
-		for (float x = 0; x < MAP_HEIGHT; x += 0.1f)
+		sf::Vector2i step;
+		if (rays[i].GetDirection().x < 0)
 		{
-			sf::Vector2f rayPos(rays[i].GetOrigin() + rays[i].GetDirection() * x);
+			step.x = -1;
+			rayLength.x = (rays[i].GetOrigin().x - (float) rayMapPosition.x) * stepSize.x;
+		}
+		else
+		{
+			step.x = 1;
+			rayLength.x = ((float) (rayMapPosition.x + 1) - rays[i].GetOrigin().x) * stepSize.x;
+		}
 
-			if (rayPos.x < 0 || rayPos.x >= MAP_WIDTH || rayPos.y < 0 || rayPos.y >= MAP_HEIGHT)
+		if (rays[i].GetDirection().y < 0)
+		{
+			step.y = -1;
+			rayLength.y = (rays[i].GetOrigin().y - (float) rayMapPosition.y) * stepSize.y;
+		}
+		else
+		{
+			step.y = 1;
+			rayLength.y = ((float) (rayMapPosition.y + 1) - rays[i].GetOrigin().y) * stepSize.y;
+		}
+
+		float rayDistance = 0.0f;
+		float maxDistance = 100.0f;
+		while (rayDistance < maxDistance)
+		{
+			// increment vector length
+			if (rayLength.x < rayLength.y)
+			{
+				rayMapPosition.x += step.x;
+				rayDistance = rayLength.x;
+				rayLength.x += stepSize.x;
+			}
+			else
+			{
+				rayMapPosition.y += step.y;
+				rayDistance = rayLength.y;
+				rayLength.y += stepSize.y;
+			}
+
+			if (rayMapPosition.x < 0 || rayMapPosition.x >= MAP_WIDTH || rayMapPosition.y < 0 || rayMapPosition.y >= MAP_HEIGHT)
 				break;
 
-			// If ray hit wall
-			if (m_Map[(int32_t)rayPos.x + MAP_WIDTH * (int32_t)rayPos.y].GetType() == Tile::Type::Wall)
+			// check if hit
+			if (m_Map[rayMapPosition.x + MAP_WIDTH * rayMapPosition.y].GetType() == Tile::Type::Wall)
 			{
-				// Scale up and down the wall depending on its distance from the ray
-				float distance = sqrtf(powf((float)(rayPos - rays[i].GetOrigin()).x, 2) + powf((float)(rayPos - rays[i].GetOrigin()).y, 2));
+				//Tile& tile = m_Map[rayMapPosition.x + MAP_WIDTH * rayMapPosition.y];
 
-				// Apply our "raw" distance as our hit
-				rays[i].mHit = distance;
+				// raw distance
+				rays[i].mHit = rayDistance;
+			
+				// Fix the fish eye by alternating the distance depending on the delta angle
+				// cosf(rayAngle - playerAngle)
+				rayDistance *= cosf(rAngle - atan2f(playerDirection.y, playerDirection.x));
 
-				// Fix the fish eye
-				distance *= cosf(rAngle - atan2f(playerDirection.y, playerDirection.x));
+				//Calculate distance of perpendicular ray (Euclidean distance will give fisheye effect!)
+				double perpWallDist;
+				if (rayLength.y > rayLength.x) perpWallDist = (rayMapPosition.x - rays[i].GetOrigin().x + (1 - step.x) / 2) / rays[i].GetDirection().x;
+				else           perpWallDist = (rayMapPosition.y - rays[i].GetOrigin().y + (1 - step.y) / 2) / rays[i].GetDirection().y;
 
 				sf::Color color;
-				if (distance > 15.0f)
+				if (rayDistance > 15.0f)
 					color = sf::Color(15, 15, 15);
-				else if (distance > 14.0f)
+				else if (rayDistance > 14.0f)
 					color = sf::Color(20, 20, 20);
-				else if (distance > 13.0f)
+				else if (rayDistance > 13.0f)
 					color = sf::Color(30, 30, 30);
-				else if (distance > 12.0f)
+				else if (rayDistance > 12.0f)
 					color = sf::Color(40, 40, 40);
-				else if (distance > 10.0)
+				else if (rayDistance > 10.0)
 					color = sf::Color(50, 50, 50);
-				else if (distance > 8.0f)
+				else if (rayDistance > 8.0f)
 					color = sf::Color(80, 80, 80);
-				else if (distance > 6.0f)
+				else if (rayDistance > 6.0f)
 					color = sf::Color(100, 100, 100);
-				else if (distance > 4.0f)
+				else if (rayDistance > 4.0f)
 					color = sf::Color(130, 130, 130);
-				else if (distance > 2.0f)
+				else if (rayDistance > 2.0f)
 					color = sf::Color(150, 150, 150);
-				else if (distance > 1.0f)
+				else if (rayDistance > 1.0f)
 					color = sf::Color(200, 200, 200);
 				else
 					color = sf::Color::White;
 
-				float ceiling = (float)(renderSize.y / 2.0) - renderSize.y / ((float)distance);
+				int lineHeight = renderSize.y / perpWallDist;
+				
+				//std::cout << rayDistance << std::endl;
+
+				float ceiling = (renderSize.y / 2.0f) - (renderSize.y / rayDistance);
 				float floor = renderSize.y - ceiling;
 
+				/*int ceiling = -lineHeight / 2 + renderSize.y / 2;
+				if (ceiling < 0) ceiling = 0;
+				int floor = lineHeight / 2 + renderSize.y / 2;
+				if (ceiling >= renderSize.y) floor = renderSize.y - 1;*/
 
-				vertices.push_back({ { (float)i, ceiling }, color });
-				vertices.push_back({ { (float)i, floor }, color });
+				// check if tile is textured
+				//if (tile.GetTexture().getSize().x > 0)
+					
+				//sf::Texture tileTexture = tile.GetTexture();
 
-				float wallScale = 1.0f - (distance / MAP_HEIGHT);
+				// wall x
+				float localX;
+				if (rayLength.y > rayLength.x)
+					localX = rays[i].GetOrigin().y + perpWallDist * rays[i].GetDirection().y;
+				else
+					localX = rays[i].GetOrigin().x + perpWallDist * rays[i].GetDirection().x;
+				localX -= floorf(localX);
+
+				// find the texture coordinate to display with our x wall
+				uint32_t texX = localX * textureSize.x;
+				if (rayLength.y > rayLength.x && rays[i].GetDirection().x > 0)
+					texX = textureSize.x - texX - 1;
+				if (rayLength.x > rayLength.y && rays[i].GetDirection().y < 0)
+					texX = textureSize.x - texX - 1;
+
+				// ceiling - floor = line height
+				float texStep = 1.0f * textureSize.y / (floor - ceiling);
+				// Starting texture coordinate
+				double texPosStart = (ceiling - renderSize.y / 2 + (floor - ceiling) / 2) * texStep;
+				double texPosEnd = (floor - renderSize.y / 2 + (floor - ceiling) / 2) * texStep;
+
+				uint32_t texYStart = (int)(texPosStart) & (textureSize.y - 1);
+				uint32_t texYEnd = (int)(texPosEnd) & (textureSize.y - 1);
+
+				//std::cout << texX << std::endl;
+
+				// if ray hits a vertical line and color isn't too low, reduce the color, to add more depth
+				if (rayLength.y > rayLength.x && color.r > 50)
+				{
+					color.r -= 30; color.g -= 30; color.b -= 30;
+				}
+
+				//std::cout << texX << std::endl;
+
+				vertices.push_back({ { (float)i, (float) ceiling }, color, { (float)texX, (float)texPosStart }});
+				vertices.push_back({ { (float)i, (float) floor }, color, { (float)texX, (float)texPosEnd } });
 
 				break;
 			}
 		}
 	}
 
-	// Draw vertices
-	Game::sInstance->draw(vertices.data(), vertices.size(), sf::Lines);
+	// Draw walls vertices
+	//sf::Texture::bind(&texture);
+	sf::RenderStates states(&texture);
+
+	Game::sInstance->draw(vertices.data(), vertices.size(), sf::Lines, states);
 
 	// Mini map
 	const float MINIMAP_SCALE = 0.1f;
@@ -144,7 +254,4 @@ void World::Render()
 			Game::sInstance->draw(rayVertices.data(), rayVertices.size(), sf::Lines);
 		}
 	}
-
-	//std::cout << m_Player.GetPosition().x << " " << m_Player.GetPosition().y << std::endl;
-	//m_Player.Render();
 }
